@@ -203,24 +203,29 @@ model.minimize(max_shifts - min_shifts)
 solver = cp_model.CpSolver()
 solver.solve(model)
 status = solver.solve(model)
-st.write(status)
+if status == 4:
+  st.write("Emploi du temps généré !")
+  data_list = []
+  for e in employees:
+    for d in days:
+      for s in shifts:
+        role = "📞" if solver.value(schedule[e]["Téléphone"][d][s]) == 1 else "✉️" if solver.value(schedule[e]["IC"][d][s]) == 1 else "🙋" if solver.value(schedule[e]["Slack"][d][s]) == 1 else "❓" if solver.value(schedule[e]["Una"][d][s]) == 1 else "✅" if s in get_shifts_for_day(d) else None
+        data_list.append({"employee":e, "day":d, "shift":s,"role":role})
+  schedule_df = pd.DataFrame(data_list).sort_values(by=["day","employee"])
+  schedule_dict = {}
+  for day, day_df in schedule_df.groupby(by="day"):
+    shifts_list = []
+    for e, employee_df in day_df.groupby(by="employee"):
+      day_shifts = employee_df["shift"]
+      shift_role = employee_df["role"]
+      shifts_dict = {"employee":e}
+      for i in range(len(day_shifts)):
+        shifts_dict[day_shifts.iloc[i]]= shift_role.iloc[i]
+      shifts_list.append(shifts_dict)
+    schedule_dict[day] = pd.DataFrame(shifts_list)
 
-data_list = []
-for e in employees:
-  for d in days:
-    for s in get_shifts_for_day(d):
-      role = "📞" if solver.value(schedule[e]["Téléphone"][d][s]) == 1 else "✉️" if solver.value(schedule[e]["IC"][d][s]) == 1 else "🙋" if solver.value(schedule[e]["Slack"][d][s]) == 1 else "❓" if solver.value(schedule[e]["Una"][d][s]) == 1 else "☑️"
-      data_list.append({"employee":e, "day":d, "shift":s,"role":role})
-schedule_df = pd.DataFrame(data_list).sort_values(by=["day","employee"])
-for day, day_df in schedule_df.groupby(by="day"):
-  st.write(day)
-  shifts_list = []
-  for e, employee_df in day_df.groupby(by="employee"):
-    day_shifts = employee_df["shift"]
-    shift_role = employee_df["role"]
-    shifts_dict = {"employee":e}
-    for i in range(len(day_shifts)):
-      shifts_dict[day_shifts.iloc[i]]= shift_role.iloc[i]
-    shifts_list.append(shifts_dict)
-  planning_df = pd.DataFrame(shifts_list)
-  st.write(planning_df)
+  for day in ["Monday","Tuesday","Wednesday","Thursday","Friday"]:
+    st.write(day)
+    st.write(schedule_dict[day])
+else:
+  st.write("Pas d'emploi du temps respectant les contraintes 😥")
