@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 import json
+from ortools.sat.python import cp_model
+
 
 st.title("🎈 Charlotte's Super Scheduler")
 st.write(
@@ -15,7 +17,6 @@ person_name = option+st.session_state.name
 if st.session_state.name:
     st.write(f"Nom d'affichage: {person_name}")
 
-from ortools.sat.python import cp_model
 model = cp_model.CpModel()
 
 # Dict pour les rôles de chaque équipe:
