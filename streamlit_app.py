@@ -117,27 +117,32 @@ def get_shifts_for_day(d):
 # Il doit toujours y avoir 4 personnes (les 2 squads confondues)
 # au téléphone entre 9h et 12h et entre 14h et 18h
 # (sauf le mercredi et le vendredi : jusqu'à 17h)
-
+# Le vendredi : 5 personnes au téléphone
 
 for d in days:
   for s in get_shifts_for_day(d):
     if s in ['09:00', '09:30', '10:00', '10:30', '11:00','11:30']:
       model.add(sum(schedule[e]["Téléphone"][d][s] for e in employees) == 4)
     if s in ['14:00','14:30', '15:00', '15:30','16:00', '16:30', '17:00', '17:30'] :
+      if d == "Friday":
+        model.add(sum(schedule[e]["Téléphone"][d][s] for e in employees) == 5)
+      else:
         model.add(sum(schedule[e]["Téléphone"][d][s] for e in employees) == 4)
 
 # Dans chaque squad, il doit toujours y avoir quelqu'un sur Intercom et
 # il doit toujours y avoir quelqu'un sur Slack.
-
+# Il doit y avoir 3 service clients au Una le lundi matin.
 for d in days:
   day_shifts = get_shifts_for_day(d)
   #print(d, day_shift)
   for s in day_shifts:
     model.add(sum(schedule[e]["Slack"][d][s] for e in employees) == 1)
-    model.add(sum(schedule[e]["Una"][d][s] for e in employees) == 1)
-    model.add(sum(schedule[e]["IC"][d][s] for e in employees if "Facturation" in e) == 1)
+    if d == "Monday" and s == "08:30":
+      model.add(sum(schedule[e]["Una"][d][s] for e in employees) == 3)
+    else:
+      model.add(sum(schedule[e]["Una"][d][s] for e in employees) == 1)
     model.add(sum(schedule[e]["IC"][d][s] for e in employees if "Client" in e) == 1)
-
+    model.add(sum(schedule[e]["IC"][d][s] for e in employees if "Facturation" in e) == 1)
 # Chaque personne doit avoir une demi-journée sans téléphone par semaine.
 # Cette demi-journée ne peut pas être le vendredi après-midi.
 
