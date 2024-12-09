@@ -186,6 +186,30 @@ for e in employees:
       sum(has_afternoon_without_phone[e][d] for d in days if d != "Friday") == 1
     )
 
+continuous_shifts = {}
+for e in employees:
+  continuous_shifts[e] = {}
+  for d in days:
+    continuous_shifts[e][d] = {}
+    for r in roles:
+      continuous_shifts[e][d][r] = {}
+      for s_idx, s in enumerate([s for s in morning_shifts]):
+        if s_idx >= 4:
+          model.add( 
+              sum(schedule[e][r][d][s] for s in morning_shifts[s_idx-4:s_idx]) <= 3
+            )
+      for s_idx, s in enumerate([s for s in afternoon_shifts]):
+        if d != "Friday":
+          if s_idx >= 5:
+            model.add( 
+                sum(schedule[e][r][d][s] for s in afternoon_shifts[s_idx-5:s_idx]) <= 4
+              )
+        else:
+          if s_idx >= 4:
+            model.add( 
+                sum(schedule[e][r][d][s] for s in afternoon_shifts[s_idx-4:s_idx]) <= 3
+            )   
+           
 
 #Dans chaque squad, chaque personne doit passer à peu près le même temps
 # au téléphone, sur Intercom, sur Slack et sur les tâches.
@@ -230,3 +254,14 @@ if status == 4:
     st.write(schedule_dict[day])
 else:
   st.write("Pas d'emploi du temps respectant les contraintes 😥")
+
+count_dict_list = []
+for employee, employee_df in schedule_df.groupby(by="employee"):
+  shift_counts = employee_df["role"].value_counts()
+  count_dict = {"employee":employee}
+  for role, role_count in zip(shift_counts.index,shift_counts.values):
+      count_dict[role] = role_count
+  count_dict_list.append(count_dict)
+count_df = pd.DataFrame(count_dict_list)
+st.write("Compte total:")
+st.write(count_df)
