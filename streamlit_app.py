@@ -214,7 +214,40 @@ for e in employees:
             model.add( 
                 sum(schedule[e][r][d][s] for s in afternoon_shifts[s_idx-4:s_idx]) <= 3
             )   
-           
+
+has_morning_early_phone = {}
+has_morning_late_phone = {}
+has_afternoon_shift = {}
+early_morning_shifts = ["09:00","09:30","10:00"]
+late_morning_shifts = ["10:30","11:00","11:30"]
+early_afternoon_shifts_redux =  ["14:00","14:30","15:00"]
+late_afternoon_shifts_redux = ["15:30","16:00","16:30"]
+early_afternoon_shifts =  ["14:00","14:30","15:00","15:30"]
+late_afternoon_shifts =  ["16:00","16:30","17:00","17:30"]
+
+for e in employees:
+  has_morning_early_phone[e] = {
+        d:  model.new_bool_var(f"morning_early_phone_{e}_{d}") for d in days
+    }
+  has_morning_late_phone[e] = {
+        d:  model.new_bool_var(f"morning_late_phone_{e}_{d}") for d in days
+  }
+  has_afternoon_shift[e] = {
+        d:  model.new_bool_var(f"afternoon_shift_{e}_{d}") for d in days
+  }
+  for d in days:
+    model.add(
+      sum(schedule[e]["Téléphone"][d][s] for s in early_morning_shifts) == 3
+    ).only_enforce_if(has_morning_early_phone[e][d])
+    model.add(
+      sum(schedule[e]["Téléphone"][d][s] for s in early_morning_shifts) == 0
+    ).only_enforce_if(~has_morning_early_phone[e][d])
+    model.add(
+      sum(schedule[e]["Téléphone"][d][s] for s in late_morning_shifts) == 3
+    ).only_enforce_if(has_morning_late_phone[e][d])
+    model.add(
+      sum(schedule[e]["Téléphone"][d][s] for s in late_morning_shifts) == 0
+    ).only_enforce_if(~has_morning_late_phone[e][d])  
 
 #Dans chaque squad, chaque personne doit passer à peu près le même temps
 # au téléphone, sur Intercom, sur Slack et sur les tâches.
