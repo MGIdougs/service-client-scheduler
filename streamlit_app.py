@@ -290,16 +290,19 @@ if status == 4:
   for day in ["Monday","Tuesday","Wednesday","Thursday","Friday"]:
     st.write(day)
     st.write(schedule_dict[day])
+
+  count_dict_list = []
+  for employee, employee_df in schedule_df.groupby(by="employee"):
+    shift_counts = employee_df["role"].value_counts()
+    count_dict = {"employee":employee}
+    for role, role_count in zip(shift_counts.index,shift_counts.values):
+      count_dict[role] = role_count
+    count_dict_list.append(count_dict)
+  count_df = pd.DataFrame(count_dict_list)
+  st.write("Compte total:")
+  st.write(count_df)
+
 else:
   st.write("Pas d'emploi du temps respectant les contraintes 😥")
 
-count_dict_list = []
-for employee, employee_df in schedule_df.groupby(by="employee"):
-  shift_counts = employee_df["role"].value_counts()
-  count_dict = {"employee":employee}
-  for role, role_count in zip(shift_counts.index,shift_counts.values):
-      count_dict[role] = role_count
-  count_dict_list.append(count_dict)
-count_df = pd.DataFrame(count_dict_list)
-st.write("Compte total:")
-st.write(count_df)
+
