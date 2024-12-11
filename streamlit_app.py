@@ -6,7 +6,7 @@ from ortools.sat.python import cp_model
 
 st.title("🎈 Charlotte's Super Scheduler")
 st.write(
-    "Let's start building! For help and inspiration, head over to [docs.streamlit.io](https://docs.streamlit.io/)."
+    "Le planning du service client !"
 )
 
 st.text_input("Quel prénom ?", key="name", placeholder="Charlotte")
@@ -20,8 +20,8 @@ if st.session_state.name:
 model = cp_model.CpModel()
 
 # Dict pour les rôles de chaque équipe:
-role_dict = {"Client":["Téléphone","IC","Una"],
-             "Facturation":["Téléphone","IC","Slack"]}
+role_dict = {"Client":["Téléphone","IC_Client","Una"],
+             "Facturation":["Téléphone","IC_Factu","Slack"]}
 
 with open("employees.json","r") as employee_file:
   employees = json.load(employee_file)
@@ -49,22 +49,7 @@ if right.button("Enlever le collaborateur", icon="➖", use_container_width=True
 
 employees_df=pd.DataFrame([{"Employee":k,"Roles":employees[k]} for k in employees]).set_index("Employee",drop=True)
 st.write("Liste des employés: ")
-employees_df
-
-role_dict = {"Client":["Téléphone","IC_Client","Una"],
-             "Facturation":["Téléphone","IC_Factu","Slack"],
-             }
-# Mon équipe est composée de 2 squads : la squad client (4 personnes) et la squad facturation (5 personnes).
-employees = {"Client1": role_dict["Client"],
-             "Client2": role_dict["Client"],
-             "Client3": role_dict["Client"],
-             "Client4": role_dict["Client"],
-             "Facturation1": role_dict["Facturation"],
-             "Facturation2": role_dict["Facturation"],
-             "Facturation3":  role_dict["Facturation"],
-             "Facturation4": role_dict["Facturation"],
-             "Facturation5": role_dict["Facturation"],
-          }
+st.write(employees_df)
 
 #Les horaires sont de 8h30 à 18h le lundi, mardi, mercredi et jeudi ; 8h30 à 17h le vendredi.
 days = ["Monday",
@@ -76,8 +61,6 @@ days = ["Monday",
 #Le planning fonctionne avec des créneaux de 30 minutes.
 shifts = [f"{t//60:02}:{t%60:02}" for t in range(510,1080,30)]
 roles = set(role_dict["Client"] + role_dict["Facturation"])
-print(roles)
-
 
 schedule = {e:
              {r:
@@ -139,12 +122,13 @@ def get_shifts_for_day(d):
 for d in days:
   for s in get_shifts_for_day(d):
     if s in ['09:00', '09:30', '10:00', '10:30', '11:00','11:30']:
-      model.add(sum(schedule[e]["Téléphone"][d][s] for e in employees) == 4)
+      model.add(sum(schedule[e]["Téléphone"][d][s] for e in employees) >= 4)
     elif s in ['14:00','14:30', '15:00', '15:30','16:00', '16:30', '17:00', '17:30'] :
-      if d == "Friday" and s in ['15:30','16:00', '16:30', '17:00', '17:30']:
-        model.add(sum(schedule[e]["Téléphone"][d][s] for e in employees) == 5)
-      else:
-        model.add(sum(schedule[e]["Téléphone"][d][s] for e in employees) == 4)
+      if d != "Friday":
+          model.add(sum(schedule[e]["Téléphone"][d][s] for e in employees) == 4)
+      elif s in ['15:30','16:00', '16:30', '17:00', '17:30']:
+          model.add(sum(schedule[e]["Téléphone"][d][s] for e in employees) == 5)
+
     elif s in ['13:30']:
       model.add(sum(schedule[e]["Téléphone"][d][s] for e in employees) == 0)
 
@@ -184,7 +168,7 @@ for e in employees:
         d:  model.new_bool_var(f"morning_without_phone_{e}_{d}") for d in days
     }
     has_afternoon_without_phone[e] = {
-        d: model.new_bool_var(f"afternoon_without_phone_{e}_{d}") for d in days if d != "Friday"
+        d: model.new_bool_var(f"afternoon_without_phone_{e}_{d}") for d in days
     }
     for d in days:
         # Contraintes pour le matin : aucune plage horaire avec téléphone
@@ -208,9 +192,8 @@ for e in employees:
     #La contrainte principale : chaque personne doit avoir au moins une demi-journée sans téléphone
     model.add(
       sum(has_morning_without_phone[e][d] for d in days) +
-      sum(has_afternoon_without_phone[e][d] for d in days if d != "Friday") == 1
+      sum(has_afternoon_without_phone[e][d] for d in days if d != "Friday") >= 1
     )
-
 
 #Dans chaque squad, chaque personne doit passer à peu près le même temps
 # au téléphone, sur Intercom, sur Slack et sur les tâches.
@@ -257,72 +240,88 @@ for e in employees:
   for d in days:
     continuous_shifts[e][d] = {}
     for r in roles:
-      continuous_shifts[e][d][r] = {}
-      for s_idx, s in enumerate([s for s in morning_shifts]):
-        if s_idx < 4:
-          model.add( 
-              sum(schedule[e][r][d][s] for s in morning_shifts[s_idx:s_idx+4]) <= 3
-            )
-      for s_idx, s in enumerate([s for s in afternoon_shifts]):
-        if s_idx < 5:
-          model.add( 
-              sum(schedule[e][r][d][s] for s in afternoon_shifts[s_idx:s_idx+5]) <= 3
+      if r != "Téléphone":
+        continuous_shifts[e][d][r] = {}
+        for s_idx, s in enumerate([s for s in morning_shifts]):
+          if s_idx < 4:
+            model.add( 
+                sum(schedule[e][r][d][s] for s in morning_shifts[s_idx:s_idx+4]) <= 2
+              )
+        for s_idx, s in enumerate([s for s in afternoon_shifts]):
+          if s_idx < 5:
+            model.add( 
+                sum(schedule[e][r][d][s] for s in afternoon_shifts[s_idx:s_idx+5]) <= 4
             )
 
 has_morning_early_phone = {}
-has_morning_late_phone = {}
-has_afternoon_early_phone = {}
-has_afternoon_late_phone = {}
 early_morning_shifts = ["09:00","09:30","10:00"]
 late_morning_shifts = ["10:30","11:00","11:30"]
 early_afternoon_shifts_redux =  ["14:00","14:30","15:00"]
 late_afternoon_shifts_redux = ["15:30","16:00","16:30"]
 early_afternoon_shifts =  ["14:00","14:30","15:00","15:30"]
 late_afternoon_shifts =  ["16:00","16:30","17:00","17:30"]
-
 for e in employees:
   has_morning_early_phone[e] = {
         d:  model.new_bool_var(f"morning_early_phone_{e}_{d}") for d in days
-    }
-  has_morning_late_phone[e] = {
-        d:  model.new_bool_var(f"morning_late_phone_{e}_{d}") for d in days
-  }
-  has_afternoon_early_phone[e] = {
-        d:  model.new_bool_var(f"afternoon_early_phone_{e}_{d}") for d in days
-  }
-  has_afternoon_late_phone[e] = {
-        d:  model.new_bool_var(f"afternoon_late_phone_{e}_{d}") for d in days
-  }
+        }
   for d in days:
     model.add(
       sum(schedule[e]["Téléphone"][d][s] for s in early_morning_shifts) == 3
-    ).only_enforce_if(has_morning_early_phone[e][d])
+    ).only_enforce_if(has_morning_early_phone[e][d]).only_enforce_if(~has_morning_without_phone[e][d])
     model.add(
       sum(schedule[e]["Téléphone"][d][s] for s in early_morning_shifts) == 0
     ).only_enforce_if(~has_morning_early_phone[e][d])
     model.add(
       sum(schedule[e]["Téléphone"][d][s] for s in late_morning_shifts) == 3
-    ).only_enforce_if(has_morning_late_phone[e][d])
+    ).only_enforce_if(~has_morning_early_phone[e][d]).only_enforce_if(~has_morning_without_phone[e][d])
     model.add(
       sum(schedule[e]["Téléphone"][d][s] for s in late_morning_shifts) == 0
-    ).only_enforce_if(~has_morning_late_phone[e][d])
-    if d in ["Monday","Tuesday","Wednesday","Thursday","Friday"]:
+    ).only_enforce_if(has_morning_early_phone[e][d])
+    if d in ["Monday","Tuesday","Thursday"]:
+      model.add(
+        sum(schedule[e]["Téléphone"][d][s] for s in early_afternoon_shifts) == 4
+      ).only_enforce_if(has_morning_early_phone[e][d]).only_enforce_if(~has_afternoon_without_phone[e][d])
+      model.add(
+       sum(schedule[e]["Téléphone"][d][s] for s in early_afternoon_shifts) == 0
+      ).only_enforce_if(~has_morning_early_phone[e][d])
+      model.add(
+       sum(schedule[e]["Téléphone"][d][s] for s in late_afternoon_shifts) == 4
+      ).only_enforce_if(~has_morning_early_phone[e][d]).only_enforce_if(~has_afternoon_without_phone[e][d])
+      model.add(
+        sum(schedule[e]["Téléphone"][d][s] for s in late_afternoon_shifts) == 0
+      ).only_enforce_if(has_morning_early_phone[e][d])
+    elif d == "Wednesday":
       model.add(
         sum(schedule[e]["Téléphone"][d][s] for s in early_afternoon_shifts_redux) == 3
-      ).only_enforce_if(has_afternoon_early_phone[e][d])
+      ).only_enforce_if(has_morning_early_phone[e][d]).only_enforce_if(~has_afternoon_without_phone[e][d])
       model.add(
-       sum(schedule[e]["Téléphone"][d][s] for s in early_afternoon_shifts_redux) == 0
-      ).only_enforce_if(~has_afternoon_early_phone[e][d])
+        sum(schedule[e]["Téléphone"][d][s] for s in early_afternoon_shifts_redux) == 0
+      ).only_enforce_if(~has_morning_early_phone[e][d])
       model.add(
         sum(schedule[e]["Téléphone"][d][s] for s in late_afternoon_shifts_redux) == 3
-      ).only_enforce_if(has_afternoon_late_phone[e][d])
+      ).only_enforce_if(~has_morning_early_phone[e][d]).only_enforce_if(~has_afternoon_without_phone[e][d])
       model.add(
         sum(schedule[e]["Téléphone"][d][s] for s in late_afternoon_shifts_redux) == 0
-      ).only_enforce_if(~has_afternoon_late_phone[e][d])
+      ).only_enforce_if(has_morning_early_phone[e][d])
+    elif d == "Friday":
+      model.add(
+        sum(schedule[e]["Téléphone"][d][s] for s in early_afternoon_shifts_redux) == 3
+      ).only_enforce_if(has_morning_early_phone[e][d]).only_enforce_if(~has_afternoon_without_phone[e][d])
+      model.add(
+        sum(schedule[e]["Téléphone"][d][s] for s in early_afternoon_shifts_redux) == 0
+      ).only_enforce_if(~has_morning_early_phone[e][d])
+      model.add(
+        sum(schedule[e]["Téléphone"][d][s] for s in late_afternoon_shifts_redux) == 3
+      ).only_enforce_if(~has_morning_early_phone[e][d]).only_enforce_if(~has_afternoon_without_phone[e][d])
+      model.add(
+        sum(schedule[e]["Téléphone"][d][s] for s in late_afternoon_shifts_redux) == 0
+      ).only_enforce_if(has_morning_early_phone[e][d])
+
 
 solver = cp_model.CpSolver()
 solver.solve(model)
 status = solver.solve(model)
+print(status)
 if status == 4:
   st.write("Emploi du temps généré !")
   data_list = []
