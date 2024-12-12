@@ -343,6 +343,19 @@ if status == 4:
       shifts_list.append(shifts_dict)
     schedule_dict[day] = pd.DataFrame(shifts_list)
 
+  st.write("Planning global :")
+  pivot_data = schedule_df.pivot_table(
+    index=['day', 'shift'],
+    columns='employee',
+    values='role',
+    aggfunc='first'
+  ).reset_index()
+  custom_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday','Friday']
+  pivot_data['day'] = pd.Categorical(pivot_data['day'], categories=custom_order, ordered=True)
+  pivot_data = pivot_data.sort_values(by=['day','shift'])
+  st.write(pivot_data)
+
+  st.write("Planning par jour:")
   for day in ["Monday","Tuesday","Wednesday","Thursday","Friday"]:
     st.write(day)
     st.write(schedule_dict[day])
@@ -360,5 +373,3 @@ if status == 4:
 
 else:
   st.write("Pas d'emploi du temps respectant les contraintes 😥")
-
-
