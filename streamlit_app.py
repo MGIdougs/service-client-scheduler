@@ -122,12 +122,14 @@ def get_shifts_for_day(d):
 for d in days:
   for s in get_shifts_for_day(d):
     if s in ['09:00', '09:30', '10:00', '10:30', '11:00','11:30']:
-      model.add(sum(schedule[e]["Téléphone"][d][s] for e in employees) >= 4)
+      model.add(sum(schedule[e]["Téléphone"][d][s] for e in employees) == 4)
     elif s in ['14:00','14:30', '15:00', '15:30','16:00', '16:30', '17:00', '17:30'] :
       if d != "Friday":
           model.add(sum(schedule[e]["Téléphone"][d][s] for e in employees) == 4)
       elif s in ['15:30','16:00', '16:30', '17:00', '17:30']:
-          model.add(sum(schedule[e]["Téléphone"][d][s] for e in employees) == 5)
+        model.add(sum(schedule[e]["Téléphone"][d][s] for e in employees) == 5)
+      else :
+        model.add(sum(schedule[e]["Téléphone"][d][s] for e in employees) == 4)
 
     elif s in ['13:30']:
       model.add(sum(schedule[e]["Téléphone"][d][s] for e in employees) == 0)
