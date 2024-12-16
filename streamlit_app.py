@@ -200,18 +200,26 @@ for e in employees:
 #Dans chaque squad, chaque personne doit passer à peu près le même temps
 # au téléphone, sur Intercom, sur Slack et sur les tâches.
 max_nb_shifts = 100
-
-total_shifts = {e:{r: model.new_int_var(0, max_nb_shifts, f"total_shifts_{e}_{r}") for r in roles} for e in employees}
-for e in employees:
-  for r in roles:
-    model.add(total_shifts[e][r] == sum(schedule[e][r][d][s] for d in days for s in get_shifts_for_day(d)))
-min_shifts = model.new_int_var(0, max_nb_shifts, "min_shifts")
-model.add_min_equality(min_shifts, [total_shifts[e][r] for e in employees for r in roles])
-max_shifts = model.new_int_var(0, max_nb_shifts, "max_shifts")
-model.add_max_equality(max_shifts, [total_shifts[e][r] for e in employees for r in roles])
-model.minimize(max_shifts - min_shifts)
-
-
+## il faut prendre en compte les équipes ! 
+total_shifts = {}
+min_shifts = {}
+max_shifts = {}
+for team in ["Facturation","Client"]:
+  for r in [r for r in role_dict[team]] :
+    #print(team,r)
+    #print(r not in total_shifts)
+    if r not in total_shifts:
+      total_shifts[r] = {}
+    for e in [c for c in employees if team in c]:
+      #print(team,r,e)
+      total_shifts[r][e] = model.new_int_var(0, max_nb_shifts, f"total_shifts_c_{e}_{r}")
+      #pprint(total_shifts)
+      model.add(total_shifts[r][e] == sum(schedule[e][r][d][s] for d in days for s in get_shifts_for_day(d)))
+    min_shifts[r] = model.new_int_var(0, max_nb_shifts, f"min_shifts_c_{r}")
+    model.add_min_equality(min_shifts[r], [total_shifts[r][e] for e in [c for c in employees if team in c]])
+    max_shifts[r] = model.new_int_var(0, max_nb_shifts, f"max_shifts_c_{r}")
+    model.add_max_equality(max_shifts[r], [total_shifts[r][e] for e in [c for c in employees if team in c]])
+    model.add(max_shifts[r] - min_shifts[r]<=2)
 
 
 ### Modifications qui risquent d'arriver : 
