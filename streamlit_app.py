@@ -130,8 +130,7 @@ for d in days:
         model.add(sum(schedule[e]["Téléphone"][d][s] for e in employees) == 5)
       else :
         model.add(sum(schedule[e]["Téléphone"][d][s] for e in employees) == 4)
-
-    elif s in ['13:30']:
+    elif s in ['13:30','08:30']:
       model.add(sum(schedule[e]["Téléphone"][d][s] for e in employees) == 0)
 
 # Dans chaque squad, il doit toujours y avoir quelqu'un sur Intercom et
