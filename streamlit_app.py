@@ -176,9 +176,9 @@ if st.checkbox("Chaque personne doit avoir au moins 1 créneau Slack/tâches", v
                 for s in day_shifts:
                     has_Slack_tasks[e][d][s] = schedule[e]["Slack/tâches"][d][s]
                     # La contrainte principale : chaque personne doit avoir au moins une demi-journée sans téléphone
-                    model.add(
-                        sum(has_Slack_tasks[e][d][s] for s in day_shifts) > 0
-                    )
+                model.add(
+                    sum(has_Slack_tasks[e][d][s] for s in day_shifts) > 0
+                )
             # La contrainte principale : chaque personne doit avoir au moins une demi-journée sans téléphone
             #model.add(
             #    sum(has_Slack_tasks[e][d] for d in days) > 0
