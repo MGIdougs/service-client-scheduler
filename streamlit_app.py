@@ -21,7 +21,7 @@ model = cp_model.CpModel()
 
 # Dict pour les rôles de chaque équipe:
 role_dict = {"Client": ["Téléphone", "IC_Client"],
-             "Facturation": ["Téléphone", "IC_Factu", "Slack/Téléphone"]}
+             "Facturation": ["Téléphone", "IC_Factu", "Slack/tâches"]}
 
 with open("employees.json", "r") as employee_file:
     employees = json.load(employee_file)
@@ -143,18 +143,46 @@ if st.checkbox("Il doit toujours y avoir 4 personnes au téléphone aux heures d
                 model.add(sum(schedule[e]["Téléphone"][d][s]
                           for e in employees) == 0)
 
-# Dans chaque squad, il doit toujours y avoir quelqu'un sur Intercom et
-# il doit toujours y avoir quelqu'un sur Slack/Téléphone.
-if st.checkbox("Dans chaque squad, il doit toujours y avoir quelqu'un sur Intercom et quelqu'un sur Slack/Téléphone.", value=True):
+# Dans chaque squad, il doit toujours y avoir quelqu'un sur Intercom 
+if st.checkbox("Dans chaque squad, il doit toujours y avoir quelqu'un sur Intercom", value=True):
     for d in days:
         day_shifts = get_shifts_for_day(d)
         # print(d, day_shift)
         for s in day_shifts:
-            model.add(sum(schedule[e]["Slack/Téléphone"][d][s] for e in employees) == 1)
             model.add(sum(schedule[e]["IC_Client"][d][s]
                       for e in employees if "Client" in e) == 1)
             model.add(sum(schedule[e]["IC_Factu"][d][s]
                       for e in employees if "Facturation" in e) == 1)
+
+
+# Dans chaque squad, il doit toujours y avoir maximum 1 personne sur Slack/tâches.
+if st.checkbox("Dans chaque squad, il doit toujours y avoir maximum 1 personne sur slack", value=True):
+    for d in days:
+        day_shifts = get_shifts_for_day(d)
+        # print(d, day_shift)
+        for s in day_shifts:
+            model.add(sum(schedule[e]["Slack/tâches"][d][s] for e in employees) <= 1)
+
+# Chaque personne doit avoir au moins 1 créneau Slack/tâches
+has_Slack_tasks = {}
+if st.checkbox("Chaque personne doit avoir au moins 1 créneau Slack/tâches", value=True):
+    for e in employees:
+        if "Facturation" in e:
+            for d in days:
+                day_shifts = get_shifts_for_day(d)
+                has_Slack_tasks[e] = {
+                    d: {}
+                }
+                for s in day_shifts:
+                    has_Slack_tasks[e][d][s] = schedule[e]["Slack/tâches"][d][s]
+                    # La contrainte principale : chaque personne doit avoir au moins une demi-journée sans téléphone
+                    model.add(
+                        sum(has_Slack_tasks[e][d][s] for s in day_shifts) > 0
+                    )
+            # La contrainte principale : chaque personne doit avoir au moins une demi-journée sans téléphone
+            #model.add(
+            #    sum(has_Slack_tasks[e][d] for d in days) > 0
+            #)
 
 # Chaque personne doit avoir une demi-journée sans téléphone par semaine.
 # Cette demi-journée ne peut pas être le vendredi après-midi.
@@ -208,7 +236,7 @@ if nophone := st.checkbox("Chaque personne doit avoir une demi-journée sans té
                 for d in days if d != "Friday") >= 1
         )
 
-if st.checkbox("Dans chaque squad, chaque personne doit passer à peu près le même temps au téléphone, sur Intercom, sur Slack/Téléphone et sur les tâches.", value=True):
+if st.checkbox("Dans chaque squad, chaque personne doit passer à peu près le même temps au téléphone, sur Intercom, sur Slack/tâches et sur les tâches.", value=True):
 
     max_nb_shifts = 100
     # il faut prendre en compte les équipes !
@@ -354,7 +382,7 @@ if status == 4:
         for d in days:
             for s in shifts:
                 role = "📞" if solver.value(schedule[e]["Téléphone"][d][s]) == 1 else "✉️" if (solver.value(schedule[e]["IC_Client"][d][s]) == 1 or solver.value(
-                    schedule[e]["IC_Factu"][d][s]) == 1) else "🙋" if solver.value(schedule[e]["Slack/Téléphone"][d][s]) == 1 else "✅" if s in get_shifts_for_day(d) else None
+                    schedule[e]["IC_Factu"][d][s]) == 1) else "🙋/✅" if solver.value(schedule[e]["Slack/tâches"][d][s]) == 1 else "✅" if s in get_shifts_for_day(d) else None
                 data_list.append(
                     {"employee": e, "day": d, "shift": s, "role": role})
     schedule_df = pd.DataFrame(data_list).sort_values(by=["day", "employee"])
