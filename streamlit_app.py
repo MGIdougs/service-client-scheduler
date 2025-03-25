@@ -20,8 +20,8 @@ if st.session_state.name:
 model = cp_model.CpModel()
 
 # Dict pour les rôles de chaque équipe:
-role_dict = {"Client": ["Téléphone", "IC_Client", "Una"],
-             "Facturation": ["Téléphone", "IC_Factu", "Slack"]}
+role_dict = {"Client": ["Téléphone", "IC_Client"],
+             "Facturation": ["Téléphone", "IC_Factu", "Slack/Téléphone"]}
 
 with open("employees.json", "r") as employee_file:
     employees = json.load(employee_file)
@@ -144,20 +144,13 @@ if st.checkbox("Il doit toujours y avoir 4 personnes au téléphone aux heures d
                           for e in employees) == 0)
 
 # Dans chaque squad, il doit toujours y avoir quelqu'un sur Intercom et
-# il doit toujours y avoir quelqu'un sur Slack.
-# Il doit y avoir 3 service clients au Una le lundi matin.
-if st.checkbox("Dans chaque squad, il doit toujours y avoir quelqu'un sur Intercom et quelqu'un sur Slack. Il doit y avoir 3 service clients au Una le lundi matin.", value=True):
+# il doit toujours y avoir quelqu'un sur Slack/Téléphone.
+if st.checkbox("Dans chaque squad, il doit toujours y avoir quelqu'un sur Intercom et quelqu'un sur Slack/Téléphone.", value=True):
     for d in days:
         day_shifts = get_shifts_for_day(d)
         # print(d, day_shift)
         for s in day_shifts:
-            model.add(sum(schedule[e]["Slack"][d][s] for e in employees) == 1)
-            if d == "Monday" and s == "08:30":
-                model.add(sum(schedule[e]["Una"][d][s]
-                          for e in employees) == 3)
-            else:
-                model.add(sum(schedule[e]["Una"][d][s]
-                          for e in employees) == 1)
+            model.add(sum(schedule[e]["Slack/Téléphone"][d][s] for e in employees) == 1)
             model.add(sum(schedule[e]["IC_Client"][d][s]
                       for e in employees if "Client" in e) == 1)
             model.add(sum(schedule[e]["IC_Factu"][d][s]
@@ -215,7 +208,7 @@ if nophone := st.checkbox("Chaque personne doit avoir une demi-journée sans té
                 for d in days if d != "Friday") >= 1
         )
 
-if st.checkbox("Dans chaque squad, chaque personne doit passer à peu près le même temps au téléphone, sur Intercom, sur Slack et sur les tâches.", value=True):
+if st.checkbox("Dans chaque squad, chaque personne doit passer à peu près le même temps au téléphone, sur Intercom, sur Slack/Téléphone et sur les tâches.", value=True):
 
     max_nb_shifts = 100
     # il faut prendre en compte les équipes !
@@ -361,7 +354,7 @@ if status == 4:
         for d in days:
             for s in shifts:
                 role = "📞" if solver.value(schedule[e]["Téléphone"][d][s]) == 1 else "✉️" if (solver.value(schedule[e]["IC_Client"][d][s]) == 1 or solver.value(
-                    schedule[e]["IC_Factu"][d][s]) == 1) else "🙋" if solver.value(schedule[e]["Slack"][d][s]) == 1 else "❓" if solver.value(schedule[e]["Una"][d][s]) == 1 else "✅" if s in get_shifts_for_day(d) else None
+                    schedule[e]["IC_Factu"][d][s]) == 1) else "🙋" if solver.value(schedule[e]["Slack/Téléphone"][d][s]) == 1 else "✅" if s in get_shifts_for_day(d) else None
                 data_list.append(
                     {"employee": e, "day": d, "shift": s, "role": role})
     schedule_df = pd.DataFrame(data_list).sort_values(by=["day", "employee"])
