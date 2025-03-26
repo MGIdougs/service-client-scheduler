@@ -20,7 +20,7 @@ if st.session_state.name:
 model = cp_model.CpModel()
 
 # Dict pour les rôles de chaque équipe:
-role_dict = {"Client": ["Téléphone", "IC_Client"],
+role_dict = {"Client": ["Téléphone", "IC_Client", "Slack/tâches"],
              "Facturation": ["Téléphone", "IC_Factu", "Slack/tâches"]}
 
 with open("employees.json", "r") as employee_file:
@@ -163,22 +163,21 @@ if st.checkbox("Il doit toujours y avoir maximum 1 personne sur slack", value=Tr
         for s in day_shifts:
             model.add(sum(schedule[e]["Slack/tâches"][d][s] for e in employees) <= 1)
 
-# Chaque personne doit avoir au moins 1 créneau Slack/tâches
+# Pour chaque squad, chaque personne doit avoir au moins 1 créneau Slack/tâches
 has_Slack_tasks = {}
-if st.checkbox("Chaque personne doit avoir au moins 1 créneau Slack/tâches", value=True):
+if st.checkbox("Pour chaque squad, chaque personne doit avoir au moins 1 créneau Slack/tâches", value=True):
     for e in employees:
-        if "Facturation" in e:
-            for d in days:
-                day_shifts = get_shifts_for_day(d)
-                has_Slack_tasks[e] = {
-                    d: {}
-                }
-                for s in day_shifts:
-                    has_Slack_tasks[e][d][s] = schedule[e]["Slack/tâches"][d][s]
-                    # La contrainte principale : chaque personne doit avoir au moins 1 créneau Slack/tâches
-                model.add(
-                    sum(has_Slack_tasks[e][d][s] for s in day_shifts) > 0
-                )
+        for d in days:
+            day_shifts = get_shifts_for_day(d)
+            has_Slack_tasks[e] = {
+                d: {}
+            }
+            for s in day_shifts:
+                has_Slack_tasks[e][d][s] = schedule[e]["Slack/tâches"][d][s]
+                # La contrainte principale : chaque personne doit avoir au moins 1 créneau Slack/tâches
+            model.add(
+                sum(has_Slack_tasks[e][d][s] for s in day_shifts) > 0
+            )
 
 # Chaque personne doit avoir une demi-journée sans téléphone par semaine.
 # Cette demi-journée ne peut pas être le vendredi après-midi.
@@ -248,7 +247,7 @@ if st.checkbox("Il doit y avoir au moins 2 créneaux Slack/tâches par demi-jour
             for afternoon_shift in afternoon_shifts
         ) >= 4)
 
-        
+
 
 if st.checkbox("Dans chaque squad, chaque personne doit passer à peu près le même temps au téléphone, sur Intercom, sur Slack/tâches et sur les tâches.", value=True):
 
