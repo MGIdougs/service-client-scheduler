@@ -155,14 +155,19 @@ if st.checkbox("Dans chaque squad, il doit toujours y avoir quelqu'un sur Interc
                       for e in employees if "Facturation" in e) == 1)
 
 
-# Il doit toujours y avoir maximum 1 personne sur Slack/tâches.
-if st.checkbox("Il doit toujours y avoir maximum 1 personne sur slack", value=True):
+# Pour chaque squad, il doit toujours y avoir maximum 1 personne sur Slack/tâches.
+if st.checkbox("Pour chaque squad, il doit toujours y avoir maximum 1 personne sur slack", value=True):
     for d in days:
         day_shifts = get_shifts_for_day(d)
         # print(d, day_shift)
         for s in day_shifts:
-            model.add(sum(schedule[e]["Slack/tâches"][d][s] for e in employees) <= 1)
-
+            model.add(sum(schedule[e]["Slack/tâches"][d][s] 
+                          for e in employees
+                          if 'Facturation' in e) <= 1)
+            model.add(sum(schedule[e]["Slack/tâches"][d][s] 
+                          for e in employees
+                          if 'Client' in e) <= 1)
+            
 # Pour chaque squad, chaque personne doit avoir au moins 1 créneau Slack/tâches
 has_Slack_tasks = {}
 if st.checkbox("Pour chaque squad, chaque personne doit avoir au moins 1 créneau Slack/tâches", value=True):
@@ -178,6 +183,7 @@ if st.checkbox("Pour chaque squad, chaque personne doit avoir au moins 1 crénea
             model.add(
                 sum(has_Slack_tasks[e][d][s] for s in day_shifts) > 0
             )
+        
 
 # Chaque personne doit avoir une demi-journée sans téléphone par semaine.
 # Cette demi-journée ne peut pas être le vendredi après-midi.
@@ -231,19 +237,37 @@ if nophone := st.checkbox("Chaque personne doit avoir une demi-journée sans té
                 for d in days if d != "Friday") >= 1
         )
 
-# Il doit y avoir au moins 2 créneaux Slack/tâches par demi-journée.
-if st.checkbox("Il doit y avoir au moins 2 créneaux Slack/tâches par demi-journée", value=True):
+# Pour chaque squad, il doit y avoir au moins 2 créneaux Slack/tâches par demi-journée.
+if st.checkbox("Pour chaque squad, il doit y avoir au moins 2 créneaux Slack/tâches par demi-journée", value=True):
     for d in days:
 
         model.add(sum(
             schedule[e]["Slack/tâches"][d][morning_shift] 
             for e in employees 
+            if 'Facturation' in e
             for morning_shift in morning_shifts
         ) >= 4)
         
         model.add(sum(
+            schedule[e]["Slack/tâches"][d][morning_shift] 
+            for e in employees 
+            if 'Client' in e
+            for morning_shift in morning_shifts
+        ) >= 4)
+
+
+
+        model.add(sum(
             schedule[e]["Slack/tâches"][d][afternoon_shift] 
             for e in employees 
+            if 'Facturation' in e
+            for afternoon_shift in afternoon_shifts
+        ) >= 4)
+
+        model.add(sum(
+            schedule[e]["Slack/tâches"][d][afternoon_shift] 
+            for e in employees 
+            if 'Client' in e
             for afternoon_shift in afternoon_shifts
         ) >= 4)
 
