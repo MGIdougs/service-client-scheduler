@@ -1,16 +1,14 @@
 import streamlit as st
 import json
-import io
 from typing import Dict, Any, Optional
 from streamlit_local_storage import LocalStorage
 
-# Clé pour le stockage des employés dans session_state et localStorage
+# Clé pour le stockage des employés
 EMPLOYEES_KEY = "employees"
 
 # Initialiser le localStorage
 local_storage = LocalStorage()
 
-# Fonction pour afficher l'interface de gestion des données
 def load_from_local_storage():
     """Affiche l'interface pour charger, exporter et importer les données"""
     with st.expander("Gestion des données", expanded=True):
@@ -106,7 +104,6 @@ def load_from_local_storage():
                 except Exception as e:
                     st.warning(f"Erreur de lecture : {str(e)}")
 
-# Fonction pour sauvegarder dans localStorage et session_state
 def save_to_local_storage(key: str, value: Any) -> None:
     """Sauvegarde les données dans localStorage et session_state"""
     # Sauvegarder dans session_state
@@ -115,7 +112,6 @@ def save_to_local_storage(key: str, value: Any) -> None:
     # Sauvegarder dans localStorage aussi
     local_storage.setItem(key, value)
 
-# Fonction pour vider localStorage et session_state
 def clear_local_storage(key: Optional[str] = None) -> None:
     """Vide les données du localStorage et de session_state"""
     if key:
@@ -130,7 +126,6 @@ def clear_local_storage(key: Optional[str] = None) -> None:
                 del st.session_state[k]
         local_storage.clear()
 
-# Fonction pour initialiser les données
 def initialize_data(initial_data: Optional[Dict] = None) -> Dict:
     """Initialise les données depuis localStorage ou session_state, ou utilise les données par défaut"""
     # Vérifier si les données sont dans session_state
