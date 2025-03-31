@@ -3,6 +3,9 @@ import pandas as pd
 import json
 from ortools.sat.python import cp_model
 
+# Import local storage module
+from local_storage import initialize_data, save_to_local_storage, load_from_local_storage
+
 
 st.title("🎈 Charlotte's Super Scheduler")
 st.write(
@@ -23,8 +26,12 @@ model = cp_model.CpModel()
 role_dict = {"Client": ["Téléphone", "IC_Client", "Slack/tâches"],
              "Facturation": ["Téléphone", "IC_Factu", "Slack/tâches"]}
 
-with open("employees.json", "r") as employee_file:
-    employees = json.load(employee_file)
+# Ajouter les widgets pour importer/exporter les données
+load_from_local_storage()
+
+# Initialiser les données si ce n'est pas déjà fait
+# Si aucune donnée n'est présente dans st.session_state, utiliser un dictionnaire vide par défaut
+employees = initialize_data({})
 
 left, right = st.columns(2)
 
@@ -32,26 +39,30 @@ if left.button("Ajouter le collaborateur", icon="➕", use_container_width=True)
     if st.session_state.name:
         left.markdown(f"{st.session_state.name} ({option}) ajouté !")
         employees[person_name] = role_dict[option]
-        with open("employees.json", "w") as employee_file:
-            json.dump(employees, employee_file)
+        # Save to localStorage instead of JSON file
+        st.session_state['employees'] = employees
+        save_to_local_storage('employees', employees)
     else:
         left.markdown(f"Il faut donner un nom au collaborateur !")
 if right.button("Enlever le collaborateur", icon="➖", use_container_width=True):
-    with open("employees.json", "r") as employee_file:
-        employees = json.load(employee_file)
     if person_name in employees:
         employees.pop(person_name)
         right.markdown(f"{st.session_state.name} ({option}) enlevé !")
+        # Save updated employees to localStorage
+        st.session_state['employees'] = employees
+        save_to_local_storage('employees', employees)
     else:
         right.markdown(
             f"{st.session_state.name} ({option}) n'est pas dans la liste !")
-    with open("employees.json", "w") as employee_file:
-        json.dump(employees, employee_file)
 
-employees_df = pd.DataFrame([{"Employee": k, "Roles": employees[k]}
-                            for k in employees]).set_index("Employee", drop=True)
 st.write("Liste des employés: ")
-st.write(employees_df)
+if employees:
+    # Créer un DataFrame seulement si le dictionnaire n'est pas vide
+    employees_df = pd.DataFrame([{"Employee": k, "Roles": employees[k]} 
+                               for k in employees]).set_index("Employee", drop=True)
+    st.write(employees_df)
+else:
+    st.info("Aucun employé n'a été ajouté. Utilisez le formulaire ci-dessus pour ajouter des employés ou importez des données.")
 
 # Les horaires sont de 8h30 à 18h le lundi, mardi, mercredi et jeudi ; 8h30 à 17h le vendredi.
 days = ["Monday",
