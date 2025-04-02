@@ -55,7 +55,7 @@ st.text_input("Quel prénom ?", key="name", placeholder="Charlotte")
 option = st.selectbox(
     'Quel équipe ?',
     ["Client", "Facturation"])
-person_name = option+st.session_state.name
+person_name = st.session_state.name
 if st.session_state.name:
     st.write(f"Nom d'affichage: {person_name}")
 
